@@ -1,22 +1,41 @@
 package com.njzk2.wtwtl;
 
+import android.location.Location;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.parse.Parse;
 
-public class MapsActivity extends ActionBarActivity {
+import java.util.Locale;
+
+public class MapsActivity extends ActionBarActivity implements GoogleApiClient.ConnectionCallbacks {
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
+    private GoogleApiClient client;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_maps);
         setUpMapIfNeeded();
+
+        client = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(this)
+                .build();
+        client.connect();
     }
 
     @Override
@@ -46,10 +65,6 @@ public class MapsActivity extends ActionBarActivity {
             // Try to obtain the map from the SupportMapFragment.
             mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map))
                     .getMap();
-            // Check if we were successful in obtaining the map.
-            if (mMap != null) {
-                setUpMap();
-            }
         }
     }
 
@@ -59,7 +74,41 @@ public class MapsActivity extends ActionBarActivity {
      * <p/>
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
-    private void setUpMap() {
-        mMap.addMarker(new MarkerOptions().position(new LatLng(0, 0)).title("Marker"));
+    private void setUpMap(LatLng latLng) {
+        mMap.addMarker(new MarkerOptions().position(latLng).title("Me"));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 9));
+    }
+
+    @Override
+    public void onConnected(Bundle bundle) {
+        LocationServices.FusedLocationApi.requestLocationUpdates(client, LocationRequest.create(), new com.google.android.gms.location.LocationListener() {
+            @Override
+            public void onLocationChanged(final Location location) {
+                LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                // Check if we were successful in obtaining the map.
+                if (mMap != null) {
+                    setUpMap(latLng);
+                }
+                LocationServices.FusedLocationApi.removeLocationUpdates(client, this);
+                client.disconnect();
+            }
+        });
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.map_actions, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        return super.onOptionsItemSelected(item);
     }
 }
